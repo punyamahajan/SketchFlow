@@ -1,83 +1,231 @@
-# SketchFlow AI v3.0
+# SketchFlow AI
 
-Transform hand-drawn sketches into production-ready React applications.
+Transform hand-drawn sketches into frontend-ready React applications through AI-powered product analysis.
+
+## The Problem
+
+Most AI coding tools can generate applications from prompts or designs.
+
+However, they assume the requirements are already complete.
+
+In reality, teams often start building from incomplete sketches, resulting in:
+
+* Missing user flows
+* Poor UX decisions
+* Scope creep
+* Rework during development
+* Incomplete feature sets
+
+## The Solution
+
+SketchFlow AI acts as an AI Product Consultant before code generation.
+
+Instead of directly generating code from a sketch, SketchFlow:
+
+1. Understands the product idea
+2. Identifies missing screens and user flows
+3. Audits the design against product best practices
+4. Creates a frontend implementation blueprint
+5. Generates a React application
+
+This ensures teams build the right product before building the product.
+
+---
+
+## How It Works
+
+```text
+Upload Sketch
+      ↓
+Intent Extraction
+      ↓
+Product Audit
+      ↓
+Frontend Blueprint
+      ↓
+Generate React App
+```
+
+### 1. Upload Sketch
+
+Upload a:
+
+* Hand-drawn sketch
+* Whiteboard photo
+* Wireframe
+* UI concept
+
+### 2. Intent Extraction
+
+Claude Vision analyzes the sketch and extracts:
+
+* Product type
+* User goals
+* Core features
+* User roles
+* Key workflows
+
+Users can review and edit the extracted intent before continuing.
+
+### 3. Product Audit
+
+SketchFlow reviews:
+
+* Missing screens
+* Missing user flows
+* Missing UI states
+* UX issues
+* Industry-specific requirements
+
+Examples:
+
+Healthcare:
+
+* Medical History
+* Emergency Contact
+* Insurance Information
+
+Fintech:
+
+* KYC Verification
+* Transaction History
+* Account Recovery
+
+E-Commerce:
+
+* Wishlist
+* Order Tracking
+* Return Management
+
+### 4. Frontend Blueprint
+
+Generate a frontend implementation document containing:
+
+* Screen inventory
+* Component inventory
+* User flows
+* Responsive requirements
+* Accessibility requirements
+* Design system recommendations
+
+### 5. Generate React Application
+
+Using:
+
+* Sketch Image
+* Confirmed Intent
+* Product Audit
+* Frontend Blueprint
+
+Claude generates a complete:
+
+* React
+* Vite
+* TypeScript
+* TailwindCSS
+
+frontend project packaged as a downloadable ZIP.
+
+---
+
+## Tech Stack
+
+### Frontend
+
+* React
+* TypeScript
+* Vite
+* TailwindCSS
+
+### Backend
+
+* FastAPI
+* SQLAlchemy
+* SQLite
+* Pydantic
+
+### AI
+
+* Claude Vision
+* Claude Sonnet
+
+---
 
 ## Architecture
 
-```
+```text
 sketchflow-v2/
-├── backend/              # FastAPI + SQLAlchemy
+├── backend/
 │   ├── app/
-│   │   ├── api/routes.py           # All 5 workflow API routes
+│   │   ├── api/
 │   │   ├── services/
-│   │   │   ├── vision_service.py   # Claude Vision — intent extraction
-│   │   │   ├── audit_service.py    # Product audit (UX/PM review)
-│   │   │   ├── blueprint_service.py # Frontend implementation blueprint
-│   │   │   └── codegen_service.py  # React/TS/Tailwind code generation
-│   │   ├── models/models.py        # SQLAlchemy models
-│   │   ├── schemas/schemas.py      # Pydantic schemas
-│   │   ├── core/                   # Config + database
-│   │   └── utils/zip_utils.py      # ZIP packaging
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── core/
+│   │   └── utils/
 │   └── main.py
-└── frontend/             # SketchFlow platform UI (React/Vite/TS/Tailwind)
+│
+└── frontend/
     └── src/
-        ├── pages/        # UploadStep, IntentStep, AuditStep, BlueprintStep, GenerateStep
-        └── api/client.ts # API client
 ```
 
-## Workflow
+### Core Services
 
-1. **Upload Sketch** → Claude Vision extracts intent JSON
-2. **Intent Editor** → User reviews + edits + confirms intent
-3. **Product Audit** → Claude reviews missing screens, flows, states, UX issues
-4. **Blueprint** → Claude generates frontend implementation blueprint
-5. **Generate** → Claude generates React/Vite/TypeScript/TailwindCSS project → ZIP download
+* Vision Service → Intent Extraction
+* Audit Service → Product Review
+* Blueprint Service → Frontend Planning
+* Codegen Service → React Generation
 
-## Setup
-
-### Backend
-```bash
-cd backend
-pip install -r requirements.txt
-cp .env.example .env
-# Add your ANTHROPIC_API_KEY to .env
-uvicorn main:app --reload --port 8000
-```
-
-### Frontend (SketchFlow Platform UI)
-```bash
-cd frontend
-npm install
-npm run dev     # runs on :3000, proxies /api to :8000
-```
-
-### Environment Variables
-```
-ANTHROPIC_API_KEY=sk-ant-...
-CLAUDE_MODEL=claude-sonnet-4-5-20251022
-DATABASE_URL=sqlite:///./sketchflow.db
-```
+---
 
 ## API Endpoints
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | /api/projects/upload | Upload sketch + extract intent |
-| GET | /api/projects/{id}/intent | Get intent |
-| PATCH | /api/projects/{id}/intent | Edit intent |
-| POST | /api/projects/{id}/intent/confirm | Confirm intent |
-| POST | /api/projects/{id}/audit | Run product audit |
-| POST | /api/projects/{id}/blueprint | Generate blueprint |
-| POST | /api/projects/{id}/generate | Generate React frontend |
-| GET | /api/projects/{id}/download | Download ZIP |
+| Method | Route                             | Description            |
+| ------ | --------------------------------- | ---------------------- |
+| POST   | /api/projects/upload              | Upload sketch          |
+| GET    | /api/projects/{id}/intent         | Retrieve intent        |
+| PATCH  | /api/projects/{id}/intent         | Update intent          |
+| POST   | /api/projects/{id}/intent/confirm | Confirm intent         |
+| POST   | /api/projects/{id}/audit          | Generate audit         |
+| POST   | /api/projects/{id}/blueprint      | Generate blueprint     |
+| POST   | /api/projects/{id}/generate       | Generate React project |
+| GET    | /api/projects/{id}/download       | Download ZIP           |
 
-## Generated Output
+---
 
-Each generated project contains:
-- `src/App.tsx` + routing
-- `src/types/index.ts` — TypeScript interfaces
-- `src/components/layout/` — Sidebar, Navbar, Layout
-- `src/pages/` — All pages from the sketch
-- `src/components/ui/` — Reusable components
-- `src/hooks/` — Custom hooks
-- `package.json`, `vite.config.ts`, `tailwind.config.js`, `tsconfig.json`
+## Running Locally
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## Future Roadmap
+
+* Figma Integration
+* Multi-Screen Analysis
+* Team Collaboration
+* Design System Detection
+* AI-Powered Refactoring
+* Full Design-to-React Workflows
+
+---
+
+## Philosophy
+
+Most AI tools help developers build faster.
+
+SketchFlow helps teams build the right thing before development begins.
