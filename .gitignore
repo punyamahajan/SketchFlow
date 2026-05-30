@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+
+# Database
+*.db
+
+# Generated files
+backend/generated/
+backend/uploads/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Virtual envs
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
