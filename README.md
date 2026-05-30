@@ -1,38 +1,12 @@
 # SketchFlow AI
 
-Transform hand-drawn sketches into frontend-ready React applications through AI-powered product analysis.
+Transform hand-drawn sketches into frontend-ready React applications.
 
-## The Problem
-
-Most AI coding tools can generate applications from prompts or designs.
-
-However, they assume the requirements are already complete.
-
-In reality, teams often start building from incomplete sketches, resulting in:
-
-* Missing user flows
-* Poor UX decisions
-* Scope creep
-* Rework during development
-* Incomplete feature sets
-
-## The Solution
-
-SketchFlow AI acts as an AI Product Consultant before code generation.
-
-Instead of directly generating code from a sketch, SketchFlow:
-
-1. Understands the product idea
-2. Identifies missing screens and user flows
-3. Audits the design against product best practices
-4. Creates a frontend implementation blueprint
-5. Generates a React application
-
-This ensures teams build the right product before building the product.
+SketchFlow AI bridges the gap between rough product ideas and implementation by understanding sketches, auditing product requirements, generating frontend blueprints, and creating production-ready React code.
 
 ---
 
-## How It Works
+## Workflow
 
 ```text
 Upload Sketch
@@ -48,12 +22,7 @@ Generate React App
 
 ### 1. Upload Sketch
 
-Upload a:
-
-* Hand-drawn sketch
-* Whiteboard photo
-* Wireframe
-* UI concept
+Upload a hand-drawn sketch, whiteboard photo, wireframe, or UI concept.
 
 ### 2. Intent Extraction
 
@@ -65,37 +34,17 @@ Claude Vision analyzes the sketch and extracts:
 * User roles
 * Key workflows
 
-Users can review and edit the extracted intent before continuing.
+The extracted intent can be reviewed and edited before proceeding.
 
 ### 3. Product Audit
 
-SketchFlow reviews:
+SketchFlow reviews the product from a UX and product perspective:
 
 * Missing screens
 * Missing user flows
 * Missing UI states
 * UX issues
 * Industry-specific requirements
-
-Examples:
-
-Healthcare:
-
-* Medical History
-* Emergency Contact
-* Insurance Information
-
-Fintech:
-
-* KYC Verification
-* Transaction History
-* Account Recovery
-
-E-Commerce:
-
-* Wishlist
-* Order Tracking
-* Return Management
 
 ### 4. Frontend Blueprint
 
@@ -108,23 +57,16 @@ Generate a frontend implementation document containing:
 * Accessibility requirements
 * Design system recommendations
 
-### 5. Generate React Application
+### 5. Generate React App
 
-Using:
-
-* Sketch Image
-* Confirmed Intent
-* Product Audit
-* Frontend Blueprint
-
-Claude generates a complete:
+Using the sketch, confirmed intent, audit, and blueprint, SketchFlow generates a complete:
 
 * React
 * Vite
 * TypeScript
 * TailwindCSS
 
-frontend project packaged as a downloadable ZIP.
+frontend application packaged as a downloadable ZIP.
 
 ---
 
@@ -159,6 +101,10 @@ sketchflow-v2/
 │   ├── app/
 │   │   ├── api/
 │   │   ├── services/
+│   │   │   ├── vision_service.py
+│   │   │   ├── audit_service.py
+│   │   │   ├── blueprint_service.py
+│   │   │   └── codegen_service.py
 │   │   ├── models/
 │   │   ├── schemas/
 │   │   ├── core/
@@ -169,12 +115,35 @@ sketchflow-v2/
     └── src/
 ```
 
-### Core Services
+---
 
-* Vision Service → Intent Extraction
-* Audit Service → Product Review
-* Blueprint Service → Frontend Planning
-* Codegen Service → React Generation
+## Run Locally
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+python -m uvicorn main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## Environment Variables
+
+```env
+ANTHROPIC_API_KEY=your_api_key
+CLAUDE_MODEL=claude-sonnet-4-5
+DATABASE_URL=sqlite:///./sketchflow.db
+```
 
 ---
 
@@ -193,39 +162,10 @@ sketchflow-v2/
 
 ---
 
-## Running Locally
+## Why SketchFlow?
 
-### Backend
+Most AI tools generate code immediately.
 
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
+SketchFlow first validates the product idea, identifies missing screens and user flows, creates a frontend implementation blueprint, and only then generates React code.
 
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
----
-
-## Future Roadmap
-
-* Figma Integration
-* Multi-Screen Analysis
-* Team Collaboration
-* Design System Detection
-* AI-Powered Refactoring
-* Full Design-to-React Workflows
-
----
-
-## Philosophy
-
-Most AI tools help developers build faster.
-
-SketchFlow helps teams build the right thing before development begins.
+**Build the right product before building the product.**
