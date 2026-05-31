@@ -2,72 +2,51 @@ import { useState } from 'react'
 import { confirmIntent, editIntent } from '../api/client'
 import type { Intent, ProjectState } from '../types'
 
-interface Props {
-  project: ProjectState
-  onUpdate: (p: ProjectState) => void
-  onComplete: () => void
-}
+const card: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e5e7eb', padding: 24, marginBottom: 20 }
+const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }
+const inputStyle: React.CSSProperties = { width: '100%', border: '1px solid #e5e7eb', borderRadius: 10, padding: '9px 12px', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }
+const taStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 72 }
+const tagStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, background: '#f3f4f6', borderRadius: 8, padding: '4px 10px', fontSize: 13 }
+
+interface Props { project: ProjectState; onUpdate: (p: ProjectState) => void; onComplete: () => void }
 
 export default function IntentStep({ project, onUpdate, onComplete }: Props) {
-  const base = project.intent?.final_intent
-  const [intent, setIntent] = useState<Intent>(base || {} as Intent)
-  const [saving, setSaving] = useState(false)
+  const [intent, setIntent] = useState<Intent>(project.intent?.final_intent || {} as Intent)
+  const [saving, setSaving]       = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState('')
+  const [saved, setSaved]         = useState(false)
+  const [error, setError]         = useState('')
 
-  const update = (key: keyof Intent, value: any) =>
-    setIntent(prev => ({ ...prev, [key]: value }))
-
-  const updateList = (key: keyof Intent, index: number, value: string) => {
-    const arr = [...(intent[key] as string[])]
-    arr[index] = value
-    update(key, arr)
-  }
-
-  const addItem = (key: keyof Intent) =>
-    update(key, [...(intent[key] as string[]), ''])
-
-  const removeItem = (key: keyof Intent, index: number) => {
-    const arr = (intent[key] as string[]).filter((_, i) => i !== index)
-    update(key, arr)
-  }
+  const set = (k: keyof Intent, v: any) => setIntent(p => ({ ...p, [k]: v }))
+  const setItem = (k: keyof Intent, i: number, v: string) => { const a = [...(intent[k] as string[])]; a[i] = v; set(k, a) }
+  const addItem = (k: keyof Intent) => set(k, [...(intent[k] as string[]), ''])
+  const removeItem = (k: keyof Intent, i: number) => set(k, (intent[k] as string[]).filter((_, j) => j !== i))
 
   const handleSave = async () => {
     setSaving(true)
-    try {
-      await editIntent(project.id, intent)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (e: any) { setError(e.message) }
+    try { await editIntent(project.id, intent); setSaved(true); setTimeout(() => setSaved(false), 2000) }
+    catch (e: any) { setError(e.message) }
     finally { setSaving(false) }
   }
 
   const handleConfirm = async () => {
     setConfirming(true)
-    try {
-      const updated = await confirmIntent(project.id, intent)
-      onUpdate({ ...project, intent: updated })
-      onComplete()
-    } catch (e: any) { setError(e.message) }
+    try { const r = await confirmIntent(project.id, intent); onUpdate({ ...project, intent: r }); onComplete() }
+    catch (e: any) { setError(e.message) }
     finally { setConfirming(false) }
   }
 
-  const ListField = ({ label, field }: { label: string; field: keyof Intent }) => (
-    <div className="mb-6">
-      <div className="flex items-center justify-between mb-2">
-        <label className="text-sm font-semibold text-gray-700">{label}</label>
-        <button onClick={() => addItem(field)} className="text-xs text-indigo-600 hover:text-indigo-800">+ Add</button>
+  const ListField = ({ label: lbl, field }: { label: string; field: keyof Intent }) => (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={label}>{lbl}</span>
+        <button onClick={() => addItem(field)} style={{ fontSize: 12, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Add</button>
       </div>
-      <div className="flex flex-col gap-2">
-        {(intent[field] as string[]).map((val, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              value={val}
-              onChange={e => updateList(field, i, e.target.value)}
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            />
-            <button onClick={() => removeItem(field, i)} className="text-gray-300 hover:text-red-400 text-lg leading-none px-1">×</button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {((intent[field] as string[]) || []).map((val, i) => (
+          <div key={i} style={{ display: 'flex', gap: 6 }}>
+            <input value={val} onChange={e => setItem(field, i, e.target.value)} style={inputStyle} />
+            <button onClick={() => removeItem(field, i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', fontSize: 18, lineHeight: 1, padding: '0 4px' }}>×</button>
           </div>
         ))}
       </div>
@@ -75,58 +54,48 @@ export default function IntentStep({ project, onUpdate, onComplete }: Props) {
   )
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8 flex items-start justify-between">
+    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Intent Editor</h1>
-          <p className="text-gray-500 text-sm">Review and edit the extracted intent. Confirm when ready — nothing else proceeds until you do.</p>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827', margin: '0 0 6px' }}>Intent Editor</h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Review and edit extracted intent. Nothing proceeds until you confirm.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={handleSave} disabled={saving} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-40">
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginLeft: 24 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '9px 18px', border: '1px solid #e5e7eb', borderRadius: 10, background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: saved ? '#059669' : '#374151' }}>
             {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save edits'}
           </button>
-          <button onClick={handleConfirm} disabled={confirming} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40">
+          <button onClick={handleConfirm} disabled={confirming} style={{ padding: '9px 18px', background: confirming ? '#a5b4fc' : '#4f46e5', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             {confirming ? 'Confirming…' : 'Confirm intent →'}
           </button>
         </div>
       </div>
 
-      {error && <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm">{error}</div>}
+      {error && <div style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 12, padding: '12px 16px', fontSize: 13, marginBottom: 20 }}>{error}</div>}
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <label className="text-sm font-semibold text-gray-700 block mb-1">Product name</label>
-          <input value={intent.product_name || ''} onChange={e => update('product_name', e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+      <div style={card}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div><span style={label}>Product name</span><input value={intent.product_name || ''} onChange={e => set('product_name', e.target.value)} style={inputStyle} /></div>
+          <div><span style={label}>Product type</span><input value={intent.product_type || ''} onChange={e => set('product_type', e.target.value)} style={inputStyle} /></div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <span style={label}>User goal</span>
+          <textarea value={intent.user_goal || ''} onChange={e => set('user_goal', e.target.value)} style={taStyle} rows={2} />
         </div>
         <div>
-          <label className="text-sm font-semibold text-gray-700 block mb-1">Product type</label>
-          <input value={intent.product_type || ''} onChange={e => update('product_type', e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+          <span style={label}>Layout notes</span>
+          <textarea value={intent.layout_notes || ''} onChange={e => set('layout_notes', e.target.value)} style={taStyle} rows={2} />
         </div>
       </div>
 
-      <div className="mb-6">
-        <label className="text-sm font-semibold text-gray-700 block mb-1">User goal</label>
-        <textarea value={intent.user_goal || ''} onChange={e => update('user_goal', e.target.value)} rows={2}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none" />
-      </div>
-
-      <div className="mb-6">
-        <label className="text-sm font-semibold text-gray-700 block mb-1">Layout notes</label>
-        <textarea value={intent.layout_notes || ''} onChange={e => update('layout_notes', e.target.value)} rows={2}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-8">
-        <div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={card}>
           <ListField label="Screens" field="screens" />
           <ListField label="Features" field="features" />
           <ListField label="User roles" field="user_roles" />
         </div>
-        <div>
+        <div style={card}>
           <ListField label="User flows" field="user_flows" />
-          <ListField label="Detected UI components" field="detected_ui" />
+          <ListField label="Detected UI" field="detected_ui" />
           <ListField label="Open questions" field="open_questions" />
         </div>
       </div>

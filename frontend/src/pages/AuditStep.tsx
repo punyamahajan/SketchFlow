@@ -2,159 +2,144 @@ import { useState } from 'react'
 import { runAudit } from '../api/client'
 import type { Audit, ProjectState } from '../types'
 
-interface Props {
-  project: ProjectState
-  onUpdate: (p: ProjectState) => void
-  onComplete: () => void
-}
+const card: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: 16 }
+const cardHeader: React.CSSProperties = { padding: '14px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 8 }
+const cardTitle: React.CSSProperties = { fontWeight: 600, fontSize: 14, color: '#111827', flex: 1 }
+const row: React.CSSProperties = { padding: '12px 20px', borderBottom: '1px solid #f9fafb', display: 'flex', gap: 12, alignItems: 'flex-start' }
+const priorityColor = (p: string) => ({ high: { background: '#fef2f2', color: '#dc2626' }, medium: { background: '#fefce8', color: '#a16207' }, low: { background: '#f3f4f6', color: '#6b7280' } }[p] || { background: '#f3f4f6', color: '#6b7280' })
+const badge = (p: string): React.CSSProperties => ({ ...priorityColor(p), fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, flexShrink: 0 })
+const count = (n: number): React.CSSProperties => ({ background: '#f3f4f6', color: '#6b7280', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99 })
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high:   'bg-red-50 text-red-600',
-  medium: 'bg-yellow-50 text-yellow-700',
-  low:    'bg-gray-50 text-gray-500',
-}
-
-const IMPACT_COLORS: Record<string, string> = {
-  high:   'bg-red-50 text-red-600',
-  medium: 'bg-blue-50 text-blue-600',
-  low:    'bg-gray-50 text-gray-500',
-}
+interface Props { project: ProjectState; onUpdate: (p: ProjectState) => void; onComplete: () => void }
 
 export default function AuditStep({ project, onUpdate, onComplete }: Props) {
-  const [audit, setAudit] = useState<Audit | null>(project.audit?.audit_json || null)
+  const [audit, setAudit]   = useState<Audit | null>(project.audit?.audit_json || null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]   = useState('')
 
-  const handleRun = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const result = await runAudit(project.id)
-      setAudit(result.audit_json)
-      onUpdate({ ...project, audit: result })
-    } catch (e: any) { setError(e.message) }
+  const run = async () => {
+    setLoading(true); setError('')
+    try { const r = await runAudit(project.id); setAudit(r.audit_json); onUpdate({ ...project, audit: r }) }
+    catch (e: any) { setError(e.message) }
     finally { setLoading(false) }
   }
 
-  const Badge = ({ label, color }: { label: string; color: string }) => (
-    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${color}`}>{label}</span>
-  )
-
-  const Section = ({ title, icon, items, render }: {
-    title: string; icon: string
-    items: any[]; render: (item: any, i: number) => React.ReactNode
-  }) => items.length > 0 ? (
-    <div className="mb-6 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
-        <span>{icon}</span>
-        <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
-        <span className="ml-auto text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{items.length}</span>
-      </div>
-      <div className="divide-y divide-gray-50">
-        {items.map((item, i) => render(item, i))}
-      </div>
-    </div>
-  ) : null
-
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8 flex items-start justify-between">
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Product Audit</h1>
-          <p className="text-gray-500 text-sm">UX and product review — missing screens, flows, states, and recommendations.</p>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827', margin: '0 0 6px' }}>Product Audit</h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>UX and PM review — missing screens, flows, states, and recommendations.</p>
         </div>
-        <div className="flex gap-2">
-          {!audit && (
-            <button onClick={handleRun} disabled={loading} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40">
-              {loading ? 'Auditing…' : 'Run Audit'}
-            </button>
-          )}
-          {audit && (
-            <button onClick={onComplete} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700">
-              Continue to Blueprint →
-            </button>
-          )}
+        <div style={{ marginLeft: 24, flexShrink: 0 }}>
+          {!audit && <button onClick={run} disabled={loading} style={{ padding: '9px 20px', background: loading ? '#a5b4fc' : '#4f46e5', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{loading ? 'Auditing…' : 'Run Audit'}</button>}
+          {audit && <button onClick={onComplete} style={{ padding: '9px 20px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Continue to Blueprint →</button>}
         </div>
       </div>
 
-      {error && <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm">{error}</div>}
+      {error && <div style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 12, padding: '12px 16px', fontSize: 13, marginBottom: 20 }}>{error}</div>}
 
       {loading && (
-        <div className="text-center py-20 text-gray-400">
-          <div className="w-10 h-10 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
-          Reviewing your product…
+        <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af' }}>
+          <div style={{ width: 40, height: 40, border: '3px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ fontSize: 14 }}>Claude is reviewing your product…</p>
         </div>
       )}
 
       {audit && (
         <>
           {audit.summary && (
-            <div className="mb-6 p-4 bg-indigo-50 rounded-2xl text-sm text-indigo-800 leading-relaxed">
+            <div style={{ background: '#eef2ff', borderRadius: 14, padding: '16px 20px', fontSize: 14, color: '#3730a3', lineHeight: 1.6, marginBottom: 20 }}>
               {audit.summary}
             </div>
           )}
 
-          <Section title="Missing Screens" icon="📱" items={audit.missing_screens}
-            render={(item, i) => (
-              <div key={i} className="px-5 py-3 flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium text-sm text-gray-900">{item.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{item.reason}</p>
+          {/* Missing Screens */}
+          {audit.missing_screens?.length > 0 && (
+            <div style={card}>
+              <div style={cardHeader}><span>📱</span><span style={cardTitle}>Missing Screens</span><span style={count(audit.missing_screens.length)}>{audit.missing_screens.length}</span></div>
+              {audit.missing_screens.map((item, i) => (
+                <div key={i} style={row}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 3px', fontWeight: 600, fontSize: 14 }}>{item.name}</p>
+                    <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>{item.reason}</p>
+                  </div>
+                  <span style={badge(item.priority || 'low')}>{item.priority}</span>
                 </div>
-                <Badge label={item.priority} color={PRIORITY_COLORS[item.priority] || ''} />
-              </div>
-            )}
-          />
+              ))}
+            </div>
+          )}
 
-          <Section title="Missing User Flows" icon="🔄" items={audit.missing_user_flows}
-            render={(item, i) => (
-              <div key={i} className="px-5 py-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-medium text-sm text-gray-900">{item.flow}</p>
-                  <Badge label={item.priority} color={PRIORITY_COLORS[item.priority] || ''} />
+          {/* Missing Flows */}
+          {audit.missing_user_flows?.length > 0 && (
+            <div style={card}>
+              <div style={cardHeader}><span>🔄</span><span style={cardTitle}>Missing User Flows</span><span style={count(audit.missing_user_flows.length)}>{audit.missing_user_flows.length}</span></div>
+              {audit.missing_user_flows.map((item, i) => (
+                <div key={i} style={row}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{item.flow}</p>
+                      <span style={badge(item.priority || 'low')}>{item.priority}</span>
+                    </div>
+                    {item.steps && <ol style={{ margin: 0, paddingLeft: 18 }}>{item.steps.map((s: string, j: number) => <li key={j} style={{ fontSize: 12, color: '#6b7280' }}>{s}</li>)}</ol>}
+                  </div>
                 </div>
-                {item.steps && <ol className="text-xs text-gray-500 ml-4 list-decimal space-y-0.5">{item.steps.map((s: string, si: number) => <li key={si}>{s}</li>)}</ol>}
-              </div>
-            )}
-          />
+              ))}
+            </div>
+          )}
 
-          <Section title="Missing UI States" icon="🔲" items={audit.missing_ui_states}
-            render={(item, i) => (
-              <div key={i} className="px-5 py-3 flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium text-sm text-gray-900">{item.screen} — <span className="text-indigo-600">{item.state}</span></p>
-                  <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+          {/* Missing UI States */}
+          {audit.missing_ui_states?.length > 0 && (
+            <div style={card}>
+              <div style={cardHeader}><span>🔲</span><span style={cardTitle}>Missing UI States</span><span style={count(audit.missing_ui_states.length)}>{audit.missing_ui_states.length}</span></div>
+              {audit.missing_ui_states.map((item, i) => (
+                <div key={i} style={row}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 3px', fontWeight: 600, fontSize: 14 }}>{item.screen} — <span style={{ color: '#6366f1' }}>{item.state}</span></p>
+                    <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>{item.description}</p>
+                  </div>
                 </div>
-              </div>
-            )}
-          />
+              ))}
+            </div>
+          )}
 
-          <Section title="UX Recommendations" icon="💡" items={audit.ux_recommendations}
-            render={(item, i) => (
-              <div key={i} className="px-5 py-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-medium text-sm text-gray-900">{item.area}</p>
-                  <Badge label={item.impact} color={IMPACT_COLORS[item.impact] || ''} />
+          {/* UX Recommendations */}
+          {audit.ux_recommendations?.length > 0 && (
+            <div style={card}>
+              <div style={cardHeader}><span>💡</span><span style={cardTitle}>UX Recommendations</span><span style={count(audit.ux_recommendations.length)}>{audit.ux_recommendations.length}</span></div>
+              {audit.ux_recommendations.map((item, i) => (
+                <div key={i} style={row}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{item.area}</p>
+                      <span style={{ ...badge(item.impact || 'low'), background: item.impact === 'high' ? '#fef2f2' : item.impact === 'medium' ? '#eff6ff' : '#f3f4f6', color: item.impact === 'high' ? '#dc2626' : item.impact === 'medium' ? '#2563eb' : '#6b7280' }}>{item.impact}</span>
+                    </div>
+                    <p style={{ margin: '0 0 4px', fontSize: 12, color: '#ef4444' }}>⚠ {item.issue}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: '#059669' }}>→ {item.recommendation}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-red-400 mb-1">{item.issue}</p>
-                <p className="text-xs text-green-700">→ {item.recommendation}</p>
-              </div>
-            )}
-          />
+              ))}
+            </div>
+          )}
 
-          <Section title="Industry Requirements" icon="🏭" items={audit.industry_requirements}
-            render={(item, i) => (
-              <div key={i} className="px-5 py-3 flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">{item.category}</p>
-                  <p className="font-medium text-sm text-gray-900">{item.requirement}</p>
+          {/* Industry Requirements */}
+          {audit.industry_requirements?.length > 0 && (
+            <div style={card}>
+              <div style={cardHeader}><span>🏭</span><span style={cardTitle}>Industry Requirements</span><span style={count(audit.industry_requirements.length)}>{audit.industry_requirements.length}</span></div>
+              {audit.industry_requirements.map((item, i) => (
+                <div key={i} style={row}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 2px', fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.category}</p>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{item.requirement}</p>
+                  </div>
+                  <span style={badge(item.priority || 'low')}>{item.priority}</span>
                 </div>
-                <Badge label={item.priority} color={PRIORITY_COLORS[item.priority] || ''} />
-              </div>
-            )}
-          />
+              ))}
+            </div>
+          )}
         </>
       )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }
