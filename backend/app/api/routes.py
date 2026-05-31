@@ -41,67 +41,70 @@ def health():
 
 # ── Step 1: Upload Sketch ──────────────────────────────────────────────────────
 
-@router.post("/projects/upload", response_model=UploadOut)
+@router.post("/projects/upload")
 async def upload_sketch(
     file: UploadFile = File(...),
     project_name: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
-    content = await file.read()
-    if not content:
-        raise HTTPException(400, "Empty file")
-
-    # Save file
-    save_path = settings.UPLOAD_DIR / f"{_uuid()}_{file.filename}"
-    save_path.write_bytes(content)
-
-    # Create project
-    project = Project(title=project_name or file.filename or "Untitled Project")
-    db.add(project)
-    db.flush()
-
-    # Save sketch record
-    sketch = Sketch(
-        project_id=project.id,
-        image_path=str(save_path),
-        original_filename=file.filename or "sketch",
-    )
-    db.add(sketch)
-    db.flush()
-
-    # Extract intent via Claude Vision
+    import traceback
     try:
-        intent_json = await asyncio.to_thread(
-            extract_intent, content, file.filename, project_name
+        content = await file.read()
+        if not content:
+            raise HTTPException(400, "Empty file")
+
+        save_path = settings.UPLOAD_DIR / f"{_uuid()}_{file.filename}"
+        save_path.write_bytes(content)
+
+        project = Project(title=project_name or file.filename or "Untitled Project")
+        db.add(project)
+        db.flush()
+
+        sketch = Sketch(
+            project_id=project.id,
+            image_path=str(save_path),
+            original_filename=file.filename or "sketch",
         )
+        db.add(sketch)
+        db.flush()
+
+        try:
+            intent_json = await asyncio.to_thread(
+                extract_intent, content, file.filename, project_name
+            )
+        except Exception as exc:
+            db.rollback()
+            raise HTTPException(500, f"Intent extraction failed: {exc}")
+
+        intent_record = IntentExtraction(
+            project_id=project.id,
+            extracted_intent_json=intent_json,
+        )
+        db.add(intent_record)
+        project.status = "intent_extracted"
+        if project_name:
+            project.title = project_name
+        db.commit()
+        db.refresh(intent_record)
+
+        return UploadOut(
+            project_id=project.id,
+            sketch_id=sketch.id,
+            intent=IntentOut.from_record(intent_record),
+        )
+
+    except HTTPException:
+        raise
     except Exception as exc:
-        db.rollback()
-        raise HTTPException(500, f"Intent extraction failed: {exc}")
-
-    intent_record = IntentExtraction(
-        project_id=project.id,
-        extracted_intent_json=intent_json,
-    )
-    db.add(intent_record)
-    project.status = "intent_extracted"
-    if project_name:
-        project.title = project_name
-    db.commit()
-    db.refresh(intent_record)
-
-    return UploadOut(
-        project_id=project.id,
-        sketch_id=sketch.id,
-        intent=IntentOut.model_validate(intent_record),
-    )
-
+        tb = traceback.format_exc()
+        raise HTTPException(500, detail=f"{type(exc).__name__}: {exc}\n\nTraceback:\n{tb}")
 
 # ── Step 2: Intent Editor ──────────────────────────────────────────────────────
 
 @router.get("/projects/{project_id}/intent", response_model=IntentOut)
 def get_intent(project_id: str, db: Session = Depends(get_db)):
     intent = _get_or_404(db, IntentExtraction, project_id=project_id)
-    return IntentOut.model_validate(intent)
+    return IntentOut.from_record(intent)
 
 
 @router.patch("/projects/{project_id}/intent", response_model=IntentOut)
@@ -110,7 +113,7 @@ def edit_intent(project_id: str, body: IntentEditBody, db: Session = Depends(get
     intent.edited_intent_json = body.edited_intent
     db.commit()
     db.refresh(intent)
-    return IntentOut.model_validate(intent)
+    return IntentOut.from_record(intent)
 
 
 @router.post("/projects/{project_id}/intent/confirm", response_model=IntentOut)
@@ -125,36 +128,60 @@ def confirm_intent(project_id: str, body: IntentConfirmBody, db: Session = Depen
         project.status = "intent_confirmed"
     db.commit()
     db.refresh(intent)
-    return IntentOut.model_validate(intent)
+    return IntentOut.from_record(intent)
 
 
 # ── Step 3: Product Audit ──────────────────────────────────────────────────────
 
 @router.post("/projects/{project_id}/audit", response_model=AuditOut)
 async def create_audit(project_id: str, db: Session = Depends(get_db)):
+    import traceback
+
     intent = _get_or_404(db, IntentExtraction, project_id=project_id)
+
     if not intent.user_confirmed:
         raise HTTPException(400, "Confirm intent before running audit")
 
     try:
-        audit_json = await asyncio.to_thread(run_product_audit, intent.final_intent)
+        audit_json = await asyncio.to_thread(
+            run_product_audit,
+            intent.final_intent
+        )
+
+        # Upsert
+        audit = db.query(ProductAudit).filter_by(project_id=project_id).first()
+
+        if audit:
+            audit.audit_json = audit_json
+        else:
+            audit = ProductAudit(
+                project_id=project_id,
+                audit_json=audit_json
+            )
+            db.add(audit)
+
+        project = db.get(Project, project_id)
+        if project:
+            project.status = "audited"
+
+        db.commit()
+        db.refresh(audit)
+
+        return AuditOut.model_validate(audit)
+
+    except HTTPException:
+        raise
+
     except Exception as exc:
-        raise HTTPException(500, f"Audit failed: {exc}")
+        tb = traceback.format_exc()
 
-    # Upsert
-    audit = db.query(ProductAudit).filter_by(project_id=project_id).first()
-    if audit:
-        audit.audit_json = audit_json
-    else:
-        audit = ProductAudit(project_id=project_id, audit_json=audit_json)
-        db.add(audit)
-
-    project = db.get(Project, project_id)
-    if project:
-        project.status = "audited"
-    db.commit()
-    db.refresh(audit)
-    return AuditOut.model_validate(audit)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"{type(exc).__name__}: {exc}\n\n"
+                f"Traceback:\n{tb}"
+            ),
+        )
 
 
 @router.get("/projects/{project_id}/audit", response_model=AuditOut)

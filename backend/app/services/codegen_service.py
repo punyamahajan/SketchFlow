@@ -1,6 +1,7 @@
 """
 Service D — React/Vite/TypeScript/TailwindCSS Frontend Generator
 Two-pass generation: structure + key components first, then remaining files.
+package.json and README.md are generated in Python (always reliable, never truncated).
 """
 from __future__ import annotations
 
@@ -46,13 +47,216 @@ def _extract_file(text: str, filename: str) -> str:
     if tag not in text:
         return ""
     after = text.split(tag, 1)[1]
-    # End at next ===...=== tag
     next_tag = re.search(r"===\S+===", after)
     if next_tag:
         after = after[:next_tag.start()]
     after = re.sub(r"^```[a-zA-Z]*\s*", "", after.strip())
     after = re.sub(r"\s*```\s*$", "", after.strip())
     return after.strip()
+
+
+def _build_package_json(intent: dict[str, Any], blueprint: dict[str, Any]) -> str:
+    """Generate package.json using the actual product name and blueprint libraries."""
+    product_name = intent.get("product_name", "sketchflow-app")
+    # Sanitise: lowercase, spaces to hyphens, strip non-alphanumeric except hyphens
+    pkg_name = re.sub(r"[^a-z0-9\-]", "", product_name.lower().replace(" ", "-")) or "sketchflow-app"
+
+    # Base dependencies always needed
+    dependencies: dict[str, str] = {
+        "react": "^18.3.0",
+        "react-dom": "^18.3.0",
+        "react-router-dom": "^6.26.0",
+        "recharts": "^2.12.0",
+        "lucide-react": "^0.446.0",
+    }
+
+    # Add any extra libraries recommended by the blueprint
+    for lib in blueprint.get("recommended_libraries", []):
+        name = lib.get("name", "")
+        if name and name not in dependencies:
+            # Default to latest if no version specified
+            dependencies[name] = "^1.0.0"
+
+    dev_dependencies: dict[str, str] = {
+        "@types/react": "^18.3.0",
+        "@types/react-dom": "^18.3.0",
+        "@vitejs/plugin-react": "^4.3.0",
+        "autoprefixer": "^10.4.20",
+        "postcss": "^8.4.45",
+        "tailwindcss": "^3.4.12",
+        "typescript": "^5.5.0",
+        "vite": "^5.4.0",
+    }
+
+    pkg = {
+        "name": pkg_name,
+        "private": True,
+        "version": "0.1.0",
+        "type": "module",
+        "scripts": {
+            "dev": "vite",
+            "build": "tsc && vite build",
+            "preview": "vite preview",
+            "lint": "tsc --noEmit",
+        },
+        "dependencies": dependencies,
+        "devDependencies": dev_dependencies,
+    }
+    return json.dumps(pkg, indent=2)
+
+
+def _build_readme(intent: dict[str, Any], blueprint: dict[str, Any]) -> str:
+    """Generate a friendly README with step-by-step run instructions."""
+    product_name = intent.get("product_name", "SketchFlow App")
+    product_type = intent.get("product_type", "Web Application")
+    user_goal = intent.get("user_goal", "")
+    screens = intent.get("screens", [])
+    tech_stack = blueprint.get("product_overview", {}).get(
+        "tech_stack", ["React", "Vite", "TypeScript", "TailwindCSS"]
+    )
+    extra_libs = blueprint.get("recommended_libraries", [])
+
+    screens_list = "\n".join(f"- {s}" for s in screens) if screens else "- See src/pages/ for all screens"
+
+    extra_install = ""
+    if extra_libs:
+        pkgs = " ".join(lib.get("name", "") for lib in extra_libs if lib.get("name"))
+        if pkgs:
+            extra_install = f"\n> The following additional libraries are also included: `{pkgs}`\n"
+
+    tech_badges = " • ".join(tech_stack)
+
+    readme = f"""# {product_name}
+
+> {product_type} — {user_goal}
+
+**Tech Stack:** {tech_badges}
+
+---
+
+## 🚀 Getting Started
+
+Follow these steps to run the project locally.
+
+### Prerequisites
+
+Make sure you have the following installed:
+
+- **Node.js** v18 or higher — [Download](https://nodejs.org/)
+- **npm** v9 or higher (comes with Node.js)
+
+You can verify your versions:
+
+```bash
+node --version
+npm --version
+```
+
+---
+
+### 1. Extract the project
+
+Unzip the downloaded file into a folder of your choice:
+
+```bash
+unzip sketchflow-*.zip -d {product_name.lower().replace(" ", "-")}
+cd {product_name.lower().replace(" ", "-")}
+```
+
+---
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+{extra_install}
+This will install React, Vite, TypeScript, TailwindCSS, and all other required packages.
+
+---
+
+### 3. Start the development server
+
+```bash
+npm run dev
+```
+
+Open your browser and go to:
+
+```
+http://localhost:5173
+```
+
+The app will hot-reload automatically when you save changes.
+
+---
+
+### 4. Build for production
+
+When you're ready to deploy:
+
+```bash
+npm run build
+```
+
+The optimised output will be in the `dist/` folder. You can preview it locally with:
+
+```bash
+npm run preview
+```
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── components/
+│   ├── layout/        # Sidebar, Navbar, Layout shell
+│   └── ui/            # Reusable UI components (cards, badges, tables)
+├── hooks/             # Custom React hooks
+├── pages/             # One file per screen/route
+├── types/             # TypeScript interfaces
+├── App.tsx            # Root component with routing
+├── main.tsx           # Entry point
+└── index.css          # Tailwind imports
+```
+
+---
+
+## 🗺️ Screens
+
+{screens_list}
+
+---
+
+## 🛠️ Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start local dev server at http://localhost:5173 |
+| `npm run build` | Build optimised production bundle |
+| `npm run preview` | Preview production build locally |
+| `npm run lint` | Run TypeScript type checks |
+
+---
+
+## 📦 Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| React 18 | UI framework |
+| React Router v6 | Client-side routing |
+| TailwindCSS | Utility-first styling |
+| Recharts | Charts and data visualisation |
+| Lucide React | Icon library |
+| Vite | Fast build tool and dev server |
+
+---
+
+*Generated by [SketchFlow](https://sketchflow.io) — sketch to code in seconds.*
+"""
+    return readme.strip()
 
 
 def generate_react_frontend(
@@ -67,6 +271,7 @@ def generate_react_frontend(
     Two passes:
       Pass 1 (image + all context) → App.tsx, types/index.ts, core layout components
       Pass 2 (pass 1 output + context) → page components, hooks, config files
+    package.json and README.md are always generated in Python — never by Claude.
     """
     context = _build_context(intent, audit, blueprint)
 
@@ -84,7 +289,14 @@ def generate_react_frontend(
     )
     p2_files = _parse_tagged_files(p2_raw)
 
-    return {**p1_files, **p2_files}
+    all_files = {**p1_files, **p2_files}
+
+    # Always overwrite package.json and README.md with Python-generated versions
+    # so they are never missing, truncated, or generic
+    all_files["package.json"] = _build_package_json(intent, blueprint)
+    all_files["README.md"] = _build_readme(intent, blueprint)
+
+    return all_files
 
 
 def _build_context(intent: dict, audit: dict, blueprint: dict) -> str:
@@ -187,17 +399,6 @@ def _build_pass2_messages(context: str, pass1_output: str) -> list[dict]:
 ===src/hooks/useSidebar.ts===
 // Sidebar open/close state hook
 
-===package.json===
-{{
-  "name": "sketchflow-app",
-  "private": true,
-  "version": "0.0.1",
-  "type": "module",
-  "scripts": {{"dev": "vite", "build": "vite build", "preview": "vite preview"}},
-  "dependencies": {{"react": "^18.3.0", "react-dom": "^18.3.0", "react-router-dom": "^6.26.0", "recharts": "^2.12.0", "lucide-react": "^0.446.0"}},
-  "devDependencies": {{"@types/react": "^18.3.0", "@types/react-dom": "^18.3.0", "@vitejs/plugin-react": "^4.3.0", "autoprefixer": "^10.4.20", "postcss": "^8.4.45", "tailwindcss": "^3.4.12", "typescript": "^5.5.0", "vite": "^5.4.0"}}
-}}
-
 ===vite.config.ts===
 import {{ defineConfig }} from 'vite'
 import react from '@vitejs/plugin-react'
@@ -232,6 +433,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+Generate the code with all the things correctly implemented, including proper imports, real data, and matching the sketch. Use Tailwind utility classes for all styling. Make it fully responsive with mobile-first approach.
 """
     return [{"role": "user", "content": prompt}]
 
@@ -239,7 +443,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><
 def _parse_tagged_files(raw: str) -> dict[str, str]:
     """Extract all ===filepath=== blocks from the raw output."""
     files: dict[str, str] = {}
-    # Find all === tags
     parts = re.split(r"(===[^=\n]+===)", raw)
     current_key: str | None = None
     for part in parts:

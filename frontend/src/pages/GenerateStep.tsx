@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type React from 'react'
 import { generateFrontend } from '../api/client'
 import type { GenerationRecord, ProjectState } from '../types'
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type React from 'react'
 import { confirmIntent, editIntent } from '../api/client'
 import type { Intent, ProjectState } from '../types'
 

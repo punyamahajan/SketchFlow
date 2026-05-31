@@ -27,10 +27,22 @@ class IntentOut(BaseModel):
     extracted_intent_json: dict[str, Any]
     edited_intent_json: dict[str, Any] | None
     user_confirmed: bool
-    final_intent: dict[str, Any]
+    final_intent: dict[str, Any] = {}
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_record(cls, record: Any) -> "IntentOut":
+        return cls(
+            id=record.id,
+            project_id=record.project_id,
+            extracted_intent_json=record.extracted_intent_json,
+            edited_intent_json=record.edited_intent_json,
+            user_confirmed=record.user_confirmed,
+            final_intent=record.edited_intent_json or record.extracted_intent_json,
+            created_at=record.created_at,
+        )
 
 
 class IntentEditBody(BaseModel):

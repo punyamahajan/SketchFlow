@@ -24,6 +24,16 @@ app.add_middleware(
 
 app.include_router(router)
 
+@app.middleware("http")
+async def log_exceptions(request, call_next):
+    import traceback
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        traceback.print_exc()
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"detail": str(exc), "type": type(exc).__name__})
+
 
 @app.get("/")
 def root():

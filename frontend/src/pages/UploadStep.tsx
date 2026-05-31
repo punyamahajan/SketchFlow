@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import type React from 'react'
 import { uploadSketch } from '../api/client'
 import type { ProjectState } from '../types'
 

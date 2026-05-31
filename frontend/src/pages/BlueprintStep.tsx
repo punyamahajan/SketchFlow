@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type React from 'react'
 import { runBlueprint } from '../api/client'
 import type { Blueprint, ProjectState } from '../types'
 

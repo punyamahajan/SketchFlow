@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type React from 'react'
 import { runAudit } from '../api/client'
 import type { Audit, ProjectState } from '../types'
 

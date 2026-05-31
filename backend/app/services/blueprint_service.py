@@ -5,11 +5,14 @@ Generates a comprehensive frontend blueprint document from intent + audit.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any
 
 import requests
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 BLUEPRINT_PROMPT = """You are a senior frontend architect.
 
@@ -19,7 +22,7 @@ PRODUCT INTENT:
 PRODUCT AUDIT:
 {audit_json}
 
-Generate a comprehensive Frontend Implementation Blueprint.
+Generate a concise Frontend Implementation Blueprint.
 Return ONLY valid JSON with exactly this structure:
 
 {{
@@ -54,9 +57,9 @@ Return ONLY valid JSON with exactly this structure:
     }}
   ],
   "responsive_requirements": {{
-    "mobile": ["requirement 1", "requirement 2"],
-    "tablet": ["requirement 1", "requirement 2"],
-    "desktop": ["requirement 1", "requirement 2"]
+    "mobile": ["requirement 1"],
+    "tablet": ["requirement 1"],
+    "desktop": ["requirement 1"]
   }},
   "accessibility_requirements": ["requirement 1", "requirement 2"],
   "ui_states": [
@@ -71,7 +74,9 @@ Return ONLY valid JSON with exactly this structure:
   "recommended_libraries": [
     {{"name": "library", "purpose": "what it's for", "install": "npm install command"}}
   ]
-}}"""
+}}
+
+Important: Be concise. Limit screen_inventory to the most important screens, component_inventory to key components only. The response must be complete valid JSON."""
 
 
 def generate_blueprint(intent: dict[str, Any], audit: dict[str, Any]) -> dict[str, Any]:
@@ -92,21 +97,53 @@ def generate_blueprint(intent: dict[str, Any], audit: dict[str, Any]) -> dict[st
         },
         json={
             "model": settings.CLAUDE_MODEL,
-            "max_tokens": 4000,
+            "max_tokens": 8000,  # raised from 4000 — blueprint was being truncated
             "system": (
-                "You are a senior frontend architect. Generate comprehensive frontend implementation blueprints. "
-                "Return only valid JSON."
+                "You are a senior frontend architect. Generate concise frontend implementation blueprints. "
+                "Return only valid JSON. Be brief — quality over quantity."
             ),
             "messages": [{"role": "user", "content": prompt}],
         },
         timeout=120,
     )
     response.raise_for_status()
-    text = response.json()["content"][0]["text"].strip()
+
+    payload = response.json()
+    if payload.get("stop_reason") == "max_tokens":
+        logger.warning(
+            "Blueprint response hit max_tokens — JSON may be truncated. "
+            "Attempting recovery."
+        )
+
+    text = payload["content"][0]["text"].strip()
     return _parse_json(text)
 
 
 def _parse_json(text: str) -> dict[str, Any]:
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
-    return json.loads(text)
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        recovered = _recover_truncated_json(text)
+        if recovered is not None:
+            logger.warning("Recovered truncated blueprint JSON — some fields may be missing.")
+            return recovered
+        raise
+
+
+def _recover_truncated_json(text: str) -> dict[str, Any] | None:
+    """
+    Salvage a truncated JSON object by trimming back to the last
+    successfully-closed brace/bracket at the top level.
+    Returns a parsed dict on success, None if unrecoverable.
+    """
+    for end in range(len(text), 0, -1):
+        if text[end - 1] not in ("}", "]"):
+            continue
+        try:
+            return json.loads(text[:end])
+        except json.JSONDecodeError:
+            continue
+    return None
